@@ -1,2 +1,4 @@
 .idea
-S1_run10.mat
+*.mat
+.snakemake
+raw_data
