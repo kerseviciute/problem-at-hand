@@ -1,3 +1,5 @@
 project: problem-at-hand
 
 sampleSheet: sample_sheet.csv
+
+sampleRate: 600

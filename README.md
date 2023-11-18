@@ -1,5 +1,7 @@
 # Adaptive neurotechnologies
 
+**Important**: the analysis is not adapted to run for multiple samples in parallel!
+
 ## How to run this analysis
 
 1. Install conda (and mamba) and create the _snakemake_ conda environment. Activate the environment.
@@ -7,6 +9,12 @@
 ```shell
 mamba env create -f env/snakemake.yml
 conda activate snakemake
+```
+
+2. Run ``snakemake``:
+
+```shell
+snakemake --cores 1 --conda-frontend mamba --use-conda
 ```
 
 ## Sample sheet information

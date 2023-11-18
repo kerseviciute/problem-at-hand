@@ -6,7 +6,8 @@ samples = pd.read_csv(config['sampleSheet'])
 
 rule all:
   input:
-    expand('raw_data/{project}/{sid}.mat', project = config['project'], sid = samples['SID'])
+    expand('output/{project}/report/preprocess_S2_run1.html', project = config['project'])
+    # expand('raw_data/{project}/{sid}.mat', project = config['project'], sid = samples['SID'])
 
 rule download:
   output:
@@ -17,3 +18,12 @@ rule download:
     '''
       curl {params.url} --location --silent --output {output.mat}
     '''
+
+rule preprocess:
+  input:
+    notebook = 'preprocess.ipynb',
+    mat = 'raw_data/{project}/{sid}.mat'
+  output:
+    report = 'output/{project}/report/preprocess_{sid}.html'
+  conda: 'env/mne.yml'
+  script: 'python/process_notebook.py'

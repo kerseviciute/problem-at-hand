@@ -3,3 +3,5 @@
 .snakemake
 raw_data
 .DS_Store
+output
+.*_snakemake.json
