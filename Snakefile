@@ -42,7 +42,8 @@ rule prep:
     montage = 'montage/montage_left_hemisphere.csv',
     raw = 'raw_data/{project}/{sid}.mat'
   output:
-    pickle = 'output/{project}/mne/{sid}.pkl'
+    raw = 'output/{project}/{sid}/raw.pkl',
+    events = 'output/{project}/{sid}/events.pkl'
   conda: 'env/mne.yml'
   script: 'python/prepare_data.py'
 
