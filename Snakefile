@@ -37,6 +37,15 @@ rule montage_csv:
   conda: 'env/mne.yml'
   script: 'python/montage_to_csv.py'
 
+rule prep:
+  input:
+    montage = 'montage/montage_left_hemisphere.csv',
+    raw = 'raw_data/{project}/{sid}.mat'
+  output:
+    pickle = 'output/{project}/mne/{sid}.pkl'
+  conda: 'env/mne.yml'
+  script: 'python/prepare_data.py'
+
 rule preprocess:
   input:
     notebook = 'preprocess.ipynb',
