@@ -19,6 +19,24 @@ rule download:
       curl {params.url} --location --silent --output {output.mat}
     '''
 
+rule download_montage:
+  output:
+    mat = 'montage/montage_left_hemisphere.mat'
+  params:
+    url = 'https://osf.io/download/uw7hr'
+  shell:
+    '''
+      curl {params.url} --location --silent --output {output.mat}
+    '''
+
+rule montage_csv:
+  input:
+    mat = 'montage/montage_left_hemisphere.mat'
+  output:
+    csv = 'montage/montage_left_hemisphere.csv'
+  conda: 'env/mne.yml'
+  script: 'python/montage_to_csv.py'
+
 rule preprocess:
   input:
     notebook = 'preprocess.ipynb',
