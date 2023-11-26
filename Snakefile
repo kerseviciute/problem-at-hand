@@ -49,9 +49,8 @@ rule prep:
 
 rule preprocess:
   input:
-    notebook = 'preprocess.ipynb',
-    mat = 'raw_data/{project}/{sid}.mat'
+    raw = 'output/{project}/{sid}/raw.pkl'
   output:
-    report = 'output/{project}/report/preprocess_{sid}.html'
+    filtered = 'output/{project}/{sid}/filtered.pkl'
   conda: 'env/mne.yml'
-  script: 'python/process_notebook.py'
+  script: 'python/preprocess.py'
