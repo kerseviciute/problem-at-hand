@@ -47,10 +47,18 @@ rule prep:
   conda: 'env/mne.yml'
   script: 'python/prepare_data.py'
 
-rule preprocess:
+rule filter:
   input:
     raw = 'output/{project}/{sid}/raw.pkl'
   output:
     filtered = 'output/{project}/{sid}/filtered.pkl'
   conda: 'env/mne.yml'
-  script: 'python/preprocess.py'
+  script: 'python/filter.py'
+
+rule drop_bad_channels:
+  input:
+    filtered = 'output/{project}/{sid}/filtered.pkl'
+  output:
+    final = 'output/{project}/{sid}/final.pkl'
+  conda: 'env/mne.yml'
+  script: 'python/drop_bad_channels.py'
