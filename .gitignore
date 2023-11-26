@@ -8,3 +8,4 @@ output
 .ipynb_checkpoints
 signal_decomposition
 montage
+.*.pkl
