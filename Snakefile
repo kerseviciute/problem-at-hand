@@ -61,4 +61,4 @@ rule drop_bad_channels:
   output:
     good_channels = 'output/{project}/{sample}/{run}/mne_good_channels.pkl'
   conda: 'env/mne.yml'
-  script: 'python/drop_bad_channels.py'
+  script: 'python/drop_bad_channels2.py'

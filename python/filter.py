@@ -39,6 +39,14 @@ config = snakemake.config
 with open(snakemake.input['raw'], 'rb') as file:
     raw = pickle.load(file)
 
+if config['filter']['scale']:
+    print('Scaling the channel data')
+    data = raw.get_data().transpose()
+    data = (data - np.mean(data, axis = 0)) / np.std(data, axis = 0)
+    raw._data = data.transpose()
+else:
+    print('Channels were not scaled')
+
 print('Filtering')
 print('Remove power line at 60 Hz')
 remove_powerline(raw, lfreq = 50, hfreq = 70)
