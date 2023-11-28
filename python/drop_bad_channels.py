@@ -1,10 +1,13 @@
 import pickle
 import mne
 import numpy as np
-from scipy import signal
 
 with open('.drop_bad_channels.py.pkl', 'wb') as file:
     pickle.dump(snakemake, file)
+
+
+# with open('.drop_bad_channels.py.pkl', 'rb') as file:
+#     snakemake = pickle.load(file)
 
 
 def get_correlation(data, batch_no = 0, batch_size = 256):
@@ -19,40 +22,47 @@ def get_correlation(data, batch_no = 0, batch_size = 256):
     return correlation_matrix
 
 
-def get_low_correlation_electrodes(data, min_batch_corr = 0.9, batch_size = 16):
+def get_low_correlation_electrodes(data, max_corr_sd = 2, min_batch_corr = 0.9, batch_size = 16):
     bad_electrodes = []
     for i in range(0, int(data.shape[0] / batch_size)):
         correlation_matrix = get_correlation(data, batch_no = i, batch_size = batch_size)
         ave_corr = np.mean(correlation_matrix, axis = 0)
+        scaled_ave_corr = np.abs((ave_corr - np.mean(ave_corr)) / np.std(ave_corr))
+        cond1 = scaled_ave_corr >= max_corr_sd
+        cond2 = ave_corr < min_batch_corr
         batch_start = i * batch_size
         batch_end = (i + 1) * batch_size
-        electrodes = np.array(range(batch_start, batch_end))[ave_corr <= min_batch_corr]
+        electrodes = np.array(range(batch_start, batch_end))[cond1 & cond2]
         bad_electrodes = np.append(bad_electrodes, electrodes)
-    return bad_electrodes
+    return np.int_(bad_electrodes)
 
-
-config = snakemake.config
 
 with open(snakemake.input['filtered'], 'rb') as file:
     raw = pickle.load(file)
 
-print(f'Searching for electrodes with correlation < {config["filter"]["minBatchCorrelation"]}')
-print(f'Batch size: {config["filter"]["batchSize"]}')
+config = snakemake.config
 
-data = raw.get_data()
-bad_electrodes = get_low_correlation_electrodes(
-    data,
-    min_batch_corr = config['filter']['minBatchCorrelation'],
-    batch_size = config['filter']['batchSize']
+max_corr_sd = config['filter']['maxCorrSD']
+min_batch_corr = config['filter']['minBatchCorr']
+batch_size = config['filter']['batchSize']
+
+print(f'Looking for electrodes with max correlation SD = {max_corr_sd} and min correlation = {min_batch_corr}')
+print(f'Batch size: {batch_size}')
+
+drop_channels = get_low_correlation_electrodes(
+    raw.get_data(),
+    max_corr_sd = max_corr_sd,
+    min_batch_corr = min_batch_corr,
+    batch_size = batch_size
 )
 
-print(f'Detected {len(bad_electrodes)} electrodes with low correlation: {bad_electrodes}')
+print(f'Detected {len(drop_channels)} electrodes with low correlation: {drop_channels}')
 
-if config['filter']['removeUncorrelated']:
-    print('Removing uncorrelated electrodes')
-    raw.drop_channels([f'X{int(x)}' for x in bad_electrodes])
+if config['filter']['removeBadElectrodes']:
+    print('Removing bad electrodes')
+    raw.drop_channels([f'X{int(x)}' for x in drop_channels])
 else:
-    print('Uncorrelated electrodes were not removed')
+    print('Bad electrodes were not removed')
 
-with open(snakemake.output['final'], 'wb') as file:
+with open(snakemake.output['good_channels'], 'wb') as file:
     pickle.dump(raw, file)

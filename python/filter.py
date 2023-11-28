@@ -11,12 +11,6 @@ with open('.preprocess.py.pkl', 'wb') as file:
 #     snakemake = pickle.load(file)
 
 
-def scale_channels(mne_data):
-    data = np.array(mne_data.get_data()).T
-    data = data - np.mean(data, axis = 0)
-    mne_data._data = data.T
-
-
 def apply_filter(data, filter):
     filtered_channels = []
     for channel_i in range(data.shape[0]):
@@ -44,9 +38,6 @@ config = snakemake.config
 
 with open(snakemake.input['raw'], 'rb') as file:
     raw = pickle.load(file)
-
-print('Scaling the channels by subtracting the mean')
-scale_channels(raw)
 
 print('Filtering')
 print('Remove power line at 60 Hz')

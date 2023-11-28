@@ -5,6 +5,7 @@ sampleSheet: sample_sheet.csv
 sampleRate: 600
 
 filter:
+  maxCorrSD: 1.5
+  minBatchCorr: 0.9
   batchSize: 16
-  minBatchCorrelation: 0.85
-  removeUncorrelated: True
+  removeBadElectrodes: True

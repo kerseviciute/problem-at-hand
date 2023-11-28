@@ -40,25 +40,25 @@ rule montage_csv:
 rule prep:
   input:
     montage = 'montage/montage_left_hemisphere.csv',
-    raw = 'raw_data/{project}/{sid}.mat'
+    raw = 'raw_data/{project}/{sample}_{run}.mat'
   output:
-    raw = 'output/{project}/{sid}/raw.pkl',
-    events = 'output/{project}/{sid}/events.pkl'
+    raw = 'output/{project}/{sample}/{run}/mne_raw.pkl',
+    events = 'output/{project}/{sample}/{run}/events.pkl'
   conda: 'env/mne.yml'
   script: 'python/prepare_data.py'
 
 rule filter:
   input:
-    raw = 'output/{project}/{sid}/raw.pkl'
+    raw = 'output/{project}/{sample}/{run}/mne_raw.pkl'
   output:
-    filtered = 'output/{project}/{sid}/filtered.pkl'
+    filtered = 'output/{project}/{sample}/{run}/mne_filtered.pkl'
   conda: 'env/mne.yml'
   script: 'python/filter.py'
 
 rule drop_bad_channels:
   input:
-    filtered = 'output/{project}/{sid}/filtered.pkl'
+    filtered = 'output/{project}/{sample}/{run}/mne_filtered.pkl'
   output:
-    final = 'output/{project}/{sid}/final.pkl'
+    good_channels = 'output/{project}/{sample}/{run}/mne_good_channels.pkl'
   conda: 'env/mne.yml'
   script: 'python/drop_bad_channels.py'
