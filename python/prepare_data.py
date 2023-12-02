@@ -14,10 +14,12 @@ def extract_event(events, event, sample_rate):
     change_indices = np.insert(change_indices, 0, -1)
 
     event_data = pd.DataFrame({
-        'EventStart': (change_indices[:-1] + 1) / sample_rate,
-        'EventEnd': (change_indices[1:] + 1) / sample_rate,
+        'Start': (change_indices[:-1] + 1) / sample_rate,
+        'End': (change_indices[1:] + 1) / sample_rate,
         'Event': events[change_indices[:-1] + 1]
     })
+
+    event_data['Length'] = list(event_data['End'] - event_data['Start'])
 
     event_data = event_data[event_data['Event'] == event]
 
@@ -57,8 +59,10 @@ extracted_events = pd.concat([
     extract_event(events, 6, sample_rate = sfreq)
 ], ignore_index = True)
 
-extracted_events = extracted_events.sort_values(by = 'EventStart')
+extracted_events = extracted_events.sort_values(by = 'Start')
 extracted_events = extracted_events.reset_index(drop = True)
+extracted_events['Event'] = extracted_events['Event'].astype('category', copy = False)
+extracted_events['EventID'] = [f'Event{x}' for x in range(0, len(extracted_events))]
 
 with open(snakemake.output['events'], 'wb') as file:
     pickle.dump(extracted_events, file)

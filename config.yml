@@ -7,3 +7,9 @@ sampleRate: 600
 filter:
   scale: True
   dropLowQuality: True
+
+features:
+  length: 2.5
+  min_freq: 1
+  max_freq: 100
+  freq_step: 1

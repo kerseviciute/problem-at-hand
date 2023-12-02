@@ -6,8 +6,7 @@ samples = pd.read_csv(config['sampleSheet'])
 
 rule all:
   input:
-    expand('output/{project}/report/preprocess_S2_run1.html', project = config['project'])
-    # expand('raw_data/{project}/{sid}.mat', project = config['project'], sid = samples['SID'])
+    'output/problem-at-hand/S5/run2/features.csv'
 
 rule download:
   output:
@@ -62,3 +61,13 @@ rule drop_bad_channels:
     good_channels = 'output/{project}/{sample}/{run}/mne_good_channels.pkl'
   conda: 'env/mne.yml'
   script: 'python/drop_bad_channels2.py'
+
+# TODO: terribly needs parallelization and optimization
+rule extract_features:
+  input:
+    final = 'output/{project}/{sample}/{run}/mne_good_channels.pkl',
+    events = 'output/{project}/{sample}/{run}/events.pkl'
+  output:
+    features = 'output/{project}/{sample}/{run}/features.csv'
+  conda: 'env/mne.yml'
+  script: 'python/extract_features.py'
