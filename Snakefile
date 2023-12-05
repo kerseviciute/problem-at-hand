@@ -69,5 +69,6 @@ rule extract_features:
     events = 'output/{project}/{sample}/{run}/events.pkl'
   output:
     features = 'output/{project}/{sample}/{run}/features.csv'
+  threads: 4
   conda: 'env/mne.yml'
   script: 'python/extract_features.py'

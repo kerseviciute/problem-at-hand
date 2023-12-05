@@ -1,23 +1,3 @@
-def bandpower(data, sf, low, high, min_freq, max_freq, nperseg = None, relative = False):
-    from scipy.signal import welch
-    from scipy.integrate import simps
-    import numpy as np
-
-    if nperseg is None:
-        nperseg = sf
-
-    freqs, psd = welch(data, sf, nperseg = nperseg)
-    freq_res = freqs[1] - freqs[0]
-    idx_band = np.logical_and(freqs >= low, freqs <= high)
-    bp = simps(psd[idx_band], dx = freq_res)
-
-    if relative:
-        idx_lim = np.logical_and(freqs >= min_freq, freqs <= max_freq)
-        bp = bp / simps(psd[idx_lim], dx = freq_res)
-
-    return bp
-
-
 def read_file(filename):
     import pickle
 
