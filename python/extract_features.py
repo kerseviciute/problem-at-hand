@@ -37,7 +37,6 @@ def process_event(events, data, freq_range, freq_step, min_freq, max_freq, index
     # Loop though the channels
     for channel in event_data.ch_names:
         # Loop through the frequency ranges
-        # TODO: OPTIMIZE!!!!!
         for freq in freq_range:
             bp = bandpower(
                 data = event_data.get_data(picks = channel)[0],
@@ -96,7 +95,8 @@ if __name__ == '__main__':
     # Process the events parallely to preserve my very limited patience
     threads = snakemake.threads
     with Pool(threads) as pool:
-        features = pool.map(partial(process_event, events, data, freq_range, freq_step, min_freq, max_freq), range(len(events)))
+        features = pool.map(partial(process_event, events, data, freq_range, freq_step, min_freq, max_freq),
+                            range(len(events)))
 
     features = pd.concat(features)
 

@@ -6,7 +6,7 @@ samples = pd.read_csv(config['sampleSheet'])
 
 rule all:
   input:
-    'output/problem-at-hand/S5/run2/features.csv'
+    expand('output/problem-at-hand/S5/run{run}/features.csv', run = range(1, 11))
 
 rule download:
   output:
@@ -58,11 +58,13 @@ rule drop_bad_channels:
   input:
     filtered = 'output/{project}/{sample}/{run}/mne_filtered.pkl'
   output:
-    good_channels = 'output/{project}/{sample}/{run}/mne_good_channels.pkl'
+    good_channels = 'output/{project}/{sample}/{run}/mne_good_channels.pkl',
+    badChannels = 'output/{project}/{sample}/{run}/bad_channels.pkl'
+  params:
+    dropLowQuality = config['filter']['dropLowQuality']
   conda: 'env/mne.yml'
   script: 'python/drop_bad_channels2.py'
 
-# TODO: terribly needs parallelization and optimization
 rule extract_features:
   input:
     final = 'output/{project}/{sample}/{run}/mne_good_channels.pkl',

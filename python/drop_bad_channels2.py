@@ -11,8 +11,6 @@ with open('.drop_bad_channels2.py.pkl', 'wb') as file:
 with open(snakemake.input['filtered'], 'rb') as file:
     raw = pickle.load(file)
 
-config = snakemake.config
-
 powers = raw.compute_psd().get_data()
 corr = np.corrcoef(powers)
 ave_corr = np.mean(corr, axis = 0)
@@ -31,7 +29,10 @@ for i in range(999, 800, -1):
 print(f'Detecting channels with average power correlation less than {min_corr}')
 print(f'Detected {len(bad_channels)} channels: {bad_channels}')
 
-if config['filter']['dropLowQuality']:
+with open(snakemake.output['badChannels'], 'wb') as file:
+    pickle.dump(bad_channels, file)
+
+if snakemake.params['dropLowQuality']:
     print('Removing low quality channels')
     raw.drop_channels([f'X{int(x)}' for x in bad_channels])
 else:

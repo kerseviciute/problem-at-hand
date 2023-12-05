@@ -6,7 +6,7 @@ sampleRate: 600
 
 filter:
   scale: True
-  dropLowQuality: True
+  dropLowQuality: False
 
 features:
   length: 2.5
