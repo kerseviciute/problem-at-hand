@@ -80,3 +80,18 @@ rule extract_features:
   threads: 10
   conda: 'env/mne.yml'
   script: 'python/extract_features.py'
+
+
+def all_runs(wildcards):
+  runs = samples[samples['SampleID'] == wildcards.sample]['Run']
+  return [f'output/{{project}}/{{sample}}/{run}/features.csv' for run in runs]
+
+
+rule combine_features:
+  input:
+    features = all_runs
+  output:
+    feature_matrix = 'output/{project}/{sample}/all/feature_matrix.csv',
+    feature_key = 'output/{project}/{sample}/all/key.csv'
+  conda: 'env/mne.yml'
+  script: 'python/combine_features.py'
