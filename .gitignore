@@ -9,3 +9,4 @@ output
 signal_decomposition
 montage
 .*.pkl
+.*.RDS

@@ -6,13 +6,13 @@ samples = pd.read_csv(config['sampleSheet'])
 
 rule all:
   input:
-    expand('output/problem-at-hand/S5/run{run}/features.csv', run = range(1, 11))
+    expand('output/problem-at-hand/S5/run{run}/features.csv', run = range(1,11))
 
 rule download:
   output:
     mat = 'raw_data/{project}/{sid}.mat'
   params:
-    url = lambda wildcards: samples[ samples['SID'] == wildcards.sid ]['URL'].iloc[0]
+    url = lambda wildcards: samples[samples['SID'] == wildcards.sid]['URL'].iloc[0]
   shell:
     '''
       curl {params.url} --location --silent --output {output.mat}
