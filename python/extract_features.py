@@ -45,7 +45,7 @@ def process_event(events, data, freq_range, freq_step, min_freq, max_freq, relat
                 high = freq + freq_step,
                 min_freq = min_freq,
                 max_freq = max_freq,
-                nperseg = 1200,
+                nperseg = 300,
                 relative = relative_frequency
             )
 
@@ -62,10 +62,10 @@ def process_event(events, data, freq_range, freq_step, min_freq, max_freq, relat
 
 
 if __name__ == '__main__':
-    with open('.extract_average_bandpower.py.pkl', 'wb') as file:
+    with open('.extract_features.py.pkl', 'wb') as file:
         pickle.dump(snakemake, file)
 
-    # with open('.extract_average_bandpower.py.pkl', 'rb') as file:
+    # with open('.extract_features.py.pkl', 'rb') as file:
     #     snakemake = pickle.load(file)
 
     ##########################################################################################
