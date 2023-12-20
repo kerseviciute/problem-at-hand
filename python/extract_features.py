@@ -26,7 +26,7 @@ def bandpower(data, sf, low, high, min_freq, max_freq, nperseg = None, relative 
     return bp
 
 
-def process_event(events, data, freq_range, freq_step, min_freq, max_freq, index):
+def process_event(events, data, freq_range, freq_step, min_freq, max_freq, relative_frequency, index):
     print(f'Processing event {index}')
 
     features = []
@@ -46,7 +46,7 @@ def process_event(events, data, freq_range, freq_step, min_freq, max_freq, index
                 min_freq = min_freq,
                 max_freq = max_freq,
                 nperseg = 1200,
-                relative = True
+                relative = relative_frequency
             )
 
             features.append({
@@ -74,12 +74,12 @@ if __name__ == '__main__':
     with open(f'{snakemake.scriptdir}/methods.py', 'r') as file:
         exec(file.read())
 
-    # Read config file
-    config = snakemake.config
-    feature_length = config['features']['length']
-    min_freq = config['features']['min_freq']
-    max_freq = config['features']['max_freq']
-    freq_step = config['features']['freq_step']
+    # Read processing parameters
+    feature_length = snakemake.params['feature_length']
+    min_freq = snakemake.params['min_freq']
+    max_freq = snakemake.params['max_freq']
+    freq_step = snakemake.params['freq_step']
+    relative_frequency = snakemake.params['relative_frequency']
 
     # Read input data
     data = read_file(snakemake.input['final'])
@@ -95,7 +95,7 @@ if __name__ == '__main__':
     # Process the events parallely to preserve my very limited patience
     threads = snakemake.threads
     with Pool(threads) as pool:
-        features = pool.map(partial(process_event, events, data, freq_range, freq_step, min_freq, max_freq),
+        features = pool.map(partial(process_event, events, data, freq_range, freq_step, min_freq, max_freq, relative_frequency),
                             range(len(events)))
 
     features = pd.concat(features)
