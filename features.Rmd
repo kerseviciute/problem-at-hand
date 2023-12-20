@@ -1,0 +1,60 @@
+---
+date: <small>`r Sys.Date()`</small>
+author: <small>Ieva Kerseviciute</small>
+---
+
+```{r, include = FALSE}
+# snakemake <- readRDS('.features.Rmd.RDS')
+
+knitr::opts_chunk$set(
+  context = 'render',
+  echo = FALSE,
+  include = FALSE,
+  out.width = '100%',
+  fig.width = 7.2,
+  fig.height = 4.3
+)
+
+library(data.table)
+library(dplyr)
+library(foreach)
+library(ggplot2)
+
+features <- foreach(file = snakemake@input$features, .combine = rbind) %do% {
+  sid <- gsub('.*/.*/.*/(.+)/features.csv', '\\1', file)
+  fread(file) %>%
+    .[ , Run := sid ]
+} %>%
+  .[ , FeatureID := paste(Channel, Frequency, sep = '_') ] %>%
+  .[ , EventID := paste(EventID, Run, sep = '_') ]
+
+uniqueFeatures <- features[ , list(EventID, Event, Run) ] %>%
+  unique()
+
+data <- features %>%
+  reshape2::dcast(FeatureID ~ EventID, value.var = 'Feature')
+featureIds <- data[ , 1 ]
+data <- data[ , -1 ]
+data <- apply(data, 2, as.numeric)
+rownames(data) <- featureIds
+```
+
+---
+title: '`r paste('Extracted features in sample', snakemake@wildcards$sample)`'
+---
+
+# Features
+
+## Principal Component Analysis
+
+```{r, include = TRUE}
+pca <- prcomp(t(data))$x %>%
+  as.data.table(keep.rownames = 'EventID') %>%
+  merge(uniqueFeatures)
+
+pca[ , list(EventID, Event, Run, PC1, PC2, PC3) ] %>%
+  .[ , Event := make.names(Event) ] %>%
+  ggplot() +
+  geom_point(aes(x = PC1, y = PC2, color = Event)) +
+  theme_bw()
+```

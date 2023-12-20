@@ -1,0 +1,25 @@
+name: problem-at-hand
+navbar:
+  title: Problem At Hand
+  left:
+    - text: Home
+      icon: fa-home
+      href: index.html
+    - text: Features
+      menu:
+        - text: S2
+          href: S2_features.html
+        - text: S3
+          href: S3_features.html
+        - text: S4
+          href: S4_features.html
+        - text: S5
+          href: S5_features.html
+output:
+  html_document:
+    self_contained: true
+    toc: true
+    toc_depth: 3
+    toc_float:
+      collapsed: false
+      smooth_scroll: true

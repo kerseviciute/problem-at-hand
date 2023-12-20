@@ -6,7 +6,10 @@ samples = pd.read_csv(config['sampleSheet'])
 
 rule all:
   input:
-    expand('output/problem-at-hand/S5/run{run}/features.csv', run = range(1, 11))
+    expand('output/{project}/report/{sample}_features.html',
+      project = config['project'],
+      sample = [f'S{x}' for x in range(2,6)]
+    )
 
 rule download:
   output:
@@ -74,3 +77,13 @@ rule extract_features:
   threads: 4
   conda: 'env/mne.yml'
   script: 'python/extract_features.py'
+
+rule report_features:
+  input:
+    features = expand('output/{{project}}/{{sample}}/run{run}/features.csv',run = range(1,11))
+  output:
+    report = 'output/{project}/report/{sample}_features.html'
+  conda: 'env/r.yml'
+  params:
+    script = 'features.Rmd'
+  script: 'R/render.R'

@@ -1,0 +1,17 @@
+name: r
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+  - r
+dependencies:
+  - r-base=4.1
+  - r-essentials=4.1
+  - r-data.table
+  - r-dplyr
+  - r-ggplot2
+  - r-ggrepel
+  - r-ggpubr
+  - r-rmarkdown
+#  - bioconductor-limma
+  - r-biocmanager
