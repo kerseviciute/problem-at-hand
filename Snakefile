@@ -15,7 +15,7 @@ rule download:
   output:
     mat = 'raw_data/{project}/{sid}.mat'
   params:
-    url = lambda wildcards: samples[ samples['SID'] == wildcards.sid ]['URL'].iloc[0]
+    url = lambda wildcards: samples[samples['SID'] == wildcards.sid]['URL'].iloc[0]
   shell:
     '''
       curl {params.url} --location --silent --output {output.mat}
@@ -74,7 +74,13 @@ rule extract_features:
     events = 'output/{project}/{sample}/{run}/events.pkl'
   output:
     features = 'output/{project}/{sample}/{run}/features.csv'
-  threads: 4
+  params:
+    feature_length = config['features']['length'],
+    min_freq = config['features']['min_freq'],
+    max_freq = config['features']['max_freq'],
+    freq_step = config['features']['freq_step'],
+    relative_frequency = config['features']['relative']
+  threads: 10
   conda: 'env/mne.yml'
   script: 'python/extract_features.py'
 
