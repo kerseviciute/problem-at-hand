@@ -23,7 +23,7 @@ def normalize_events(events, feature_length):
 
     for index, event in events.iterrows():
         n_events = int(event['Length'] / feature_length)
-        centered_event = center_event_time(event, n_events)
+        centered_event = center_event_time(event, n_events * feature_length)
 
         for i in range(n_events):
             start = centered_event['Start'] + i * feature_length
