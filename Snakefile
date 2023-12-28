@@ -22,7 +22,7 @@ rule download_montage:
   output:
     mat = temp('montage/montage_left_hemisphere.mat')
   params:
-    url = 'https://osf.io/download/uw7hr'
+    url = 'https://osf.io/download/hvdq8'
   shell:
     '''
       curl {params.url} --location --silent --output {output.mat}
