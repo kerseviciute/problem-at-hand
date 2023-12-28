@@ -82,14 +82,29 @@ rule extract_features:
   script: 'python/extract_features.py'
 
 
-def all_runs(wildcards):
+def all_runs_features(wildcards):
   runs = samples[samples['SampleID'] == wildcards.sample]['Run']
   return [f'output/{{project}}/{{sample}}/{run}/features.csv' for run in runs]
 
 
+def all_runs_raw_mne(wildcards):
+  runs = samples[samples['SampleID'] == wildcards.sample]['Run']
+  return [f'output/{{project}}/{{sample}}/{run}/mne_raw.pkl' for run in runs]
+
+
+def all_runs_filtered_mne(wildcards):
+  runs = samples[samples['SampleID'] == wildcards.sample]['Run']
+  return [f'output/{{project}}/{{sample}}/{run}/mne_filtered.pkl' for run in runs]
+
+
+def all_runs_bad_channels(wildcards):
+  runs = samples[samples['SampleID'] == wildcards.sample]['Run']
+  return [f'output/{{project}}/{{sample}}/{run}/bad_channels.pkl' for run in runs]
+
+
 rule combine_features:
   input:
-    features = all_runs
+    features = all_runs_features
   output:
     feature_matrix = 'output/{project}/{sample}/all/feature_matrix.csv',
     feature_key = 'output/{project}/{sample}/all/key.csv'
@@ -106,5 +121,19 @@ rule report_summary:
     report = '{project}/index.html'
   params:
     script = 'reports/index.Rmd'
+  conda: 'env/r.yml'
+  script: 'R/render.R'
+
+rule report_preprocessing:
+  input:
+    samples = config['sampleSheet'],
+    raw = all_runs_raw_mne,
+    filtered = all_runs_filtered_mne,
+    bad_channels = all_runs_bad_channels
+  output:
+    report = '{project}/preprocess_{sample}.html'
+  params:
+    script = 'reports/preprocess.Rmd'
+  threads: 4 # avoid running reports in parallel
   conda: 'env/r.yml'
   script: 'R/render.R'

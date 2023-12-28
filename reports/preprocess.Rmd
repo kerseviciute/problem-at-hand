@@ -1,0 +1,50 @@
+---
+date: <small>`r Sys.Date()`</small>
+author: <small>Ieva Kerseviciute</small>
+title: Problem at Hand
+---
+
+```{r r-setup, include = FALSE}
+# snakemake <- readRDS('.index.Rmd.RDS')
+snakemake@source('R/rmd_setup.R')
+library(data.table)
+library(dplyr)
+library(foreach)
+library(glue)
+
+samples <- data.table::fread(snakemake@input$samples) %>%
+  .[ SampleID == snakemake@wildcards$sample ] %>%
+  .[ , list(SampleID, Run, Age, Sex, DominantHand) ]
+
+prefix <- snakemake@input$raw[ 1 ] %>% dirname() %>% dirname()
+config <- snakemake@config
+```
+
+```{python python-setup}
+import mne
+import matplotlib.pyplot as plt
+import pickle
+
+def read_pickle(filename):
+  with open(filename, 'rb') as file:
+    data = pickle.load(file)
+  return data
+```
+
+# Preprocessing sample _`r snakemake@wildcards$sample`_ {.tabset .tabset-pills}
+
+**Table 1.** Sample data.
+
+```{r, include = TRUE}
+samples %>% showTable()
+```
+
+```{r}
+pages <- foreach::foreach(run = samples[ , Run ] %>% unique) %do% {
+  knitr::knit_child(glue::glue('{snakemake@scriptdir}/reports/components/preprocess.Rmd'), quiet = TRUE, envir = environment())
+}
+```
+
+```{r, include = TRUE, results = 'asis'}
+cat(unlist(pages), sep = '\n')
+```

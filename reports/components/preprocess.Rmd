@@ -1,0 +1,48 @@
+## Run `r gsub(x = run, pattern = 'run', replacement = '')`
+
+```{python}
+prefix = f'{r.prefix}/{r.run}'
+
+raw = read_pickle(f'{prefix}/mne_raw.pkl')
+filtered = read_pickle(f'{prefix}/mne_filtered.pkl')
+bad_channels = read_pickle(f'{prefix}/bad_channels.pkl')
+```
+
+The raw data were converted into MNE-Python data structures, which were then processed as follows. Firstly, all
+channels were scaled using the z-transformation. Then, the data were filtered to remove powerline frequencies
+in the ranges 50-70 Hz, 115-125 Hz, 170-190 Hz, and 235-245 Hz using the 40th-order band-stop Butterworth filter.
+Finally, the frequencies lower than 4 Hz and higher than 290 Hz were removed using the FIR filter.
+
+```{python, include = TRUE}
+raw.compute_psd().plot()
+plt.show()
+```
+
+**Figure 1.** EEG data before filtering.
+
+```{python, include = TRUE}
+filtered.compute_psd().plot()
+plt.show()
+```
+
+**Figure 2.** EEG data after filtering.
+
+The correlation of power spectral density (PSD) between different channels was calculated. Minimum allowed PSD
+correlation was estimated for each run separately by reducing the minimum correlation coefficient until the
+number of channels with lower average correlation was less than 25. This algorithm allowed for more robust and
+flexible detection of bad quality channels, preventing the removal of good quality data in cases when overall
+channel correlation is low (which could be the case with constant correlation cutoff).
+
+```{r, include = TRUE, results = 'asis'}
+if (config$filter$dropLowQuality) {
+  cat('Low quality channels **were removed** from the data.')
+} else {
+  cat('Note, that low quality channels **were not removed** from the data.')
+}
+```
+
+**Table 2.** Channels with low correlation.
+
+```{r, include = TRUE}
+data.table::data.table(py$bad_channels) %>% showTable()
+```

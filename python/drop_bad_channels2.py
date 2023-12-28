@@ -1,6 +1,7 @@
 import pickle
 import mne
 import numpy as np
+import pandas as pd
 
 with open('.drop_bad_channels2.py.pkl', 'wb') as file:
     pickle.dump(snakemake, file)
@@ -29,14 +30,20 @@ for i in range(999, 800, -1):
 print(f'Detecting channels with average power correlation less than {min_corr}')
 print(f'Detected {len(bad_channels)} channels: {bad_channels}')
 
-with open(snakemake.output['badChannels'], 'wb') as file:
-    pickle.dump(bad_channels, file)
-
 if snakemake.params['dropLowQuality']:
     print('Removing low quality channels')
     raw.drop_channels([f'X{int(x)}' for x in bad_channels])
 else:
     print('Low quality channels were not removed')
+
+bad_channels = pd.DataFrame({
+    'Channel': bad_channels,
+    'CorrelationCutoff': min_corr,
+    'Correlation': ave_corr[bad_channels]
+})
+
+with open(snakemake.output['badChannels'], 'wb') as file:
+    pickle.dump(bad_channels, file)
 
 with open(snakemake.output['good_channels'], 'wb') as file:
     pickle.dump(raw, file)

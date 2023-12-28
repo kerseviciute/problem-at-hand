@@ -13,3 +13,5 @@ dependencies:
   - r-plotly 4.10.3
   - r-ggpubr 0.6.0
   - r-knitr 1.45
+  - r-dt 0.31
+  - r-glue 1.6.2
