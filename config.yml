@@ -28,3 +28,7 @@ report:
     - preprocess_S3
     - preprocess_S4
     - preprocess_S5
+    - features_S2
+    - features_S3
+    - features_S4
+    - features_S5

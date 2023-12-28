@@ -1,0 +1,170 @@
+## Run `r gsub(x = run, pattern = 'run', replacement = '')`
+
+### Epochs {.unlisted .unnumbered}
+
+```{python}
+prefix = f'{r.prefix}/{r.run}'
+
+data = pd.read_pickle(f'{prefix}/mne_good_channels.pkl')
+events = pd.read_pickle(f'{prefix}/events.pkl')
+feature_matrix = pd.read_csv(f'{prefix}/feature_matrix.csv', index_col = 0)
+feature_info = pd.read_csv(f'{prefix}/feature_key.csv')
+key = pd.read_csv(f'{prefix}/event_key.csv')
+
+feature_length = r.feature_length
+min_freq = r.min_freq
+max_freq = r.max_freq
+freq_step = r.freq_step
+nperseg = r.nperseg
+relative = r.relative
+
+example_event = events[ events['EventID'] == 'Event3' ]
+event = example_event.iloc[0]
+
+normalized_events = normalize_events(events, feature_length = feature_length)
+example_normalized_event = normalized_events[normalized_events['OriginalEventID'] == event['EventID']]
+```
+
+Firstly, the events were cropped into epochs of equal length of `r feature_length` seconds. If it was impossible
+to divide an event into equal time segments, the event was cropped from both start and end (e.g., an event of
+`r round(feature_length * 12 + feature_length / 2, 2)` seconds would be shortened by
+`r round(feature_length / 4, 2)` seconds from both start and end in order to make it `r round(feature_length * 12, 2)`
+seconds long, a time interval which is divided into exactly 12 segments of `r feature_length` seconds).
+
+**Table 1.** Example event **before** splitting into epochs.
+
+```{r, include = TRUE}
+data.table::data.table(py$example_event) %>% showTable()
+```
+
+**Table 2.** Example event **after** splitting into epochs.
+
+```{r, include = TRUE}
+data.table::data.table(py$example_normalized_event) %>% showTable()
+```
+
+```{python, include = TRUE}
+event_data = data.copy().crop(tmin = event['Start'], tmax = event['End'])
+first_start = example_normalized_event.iloc[0]['Start']
+colors = ['white', 'gray']
+average = np.mean(event_data.get_data(), axis = 0)
+limit = np.max(np.abs(average))
+limit = limit + limit * 0.25
+target_event = example_normalized_event.iloc[int(len(example_normalized_event) / 2)]['EventID']
+
+plt.plot(event_data.times + first_start, average, c = 'black', linewidth = 0.5)
+
+for i, epoch in example_normalized_event.iterrows():
+    if epoch['EventID'] == target_event:
+        color = 'blue'
+    else:
+        color = colors[i % 2]
+    plt.axvspan(epoch['Start'], epoch['End'], facecolor = color, alpha = 0.25)
+
+plt.xlim(np.min(example_normalized_event['Start']), np.max(example_normalized_event['End']));
+plt.ylim(-limit, limit);
+plt.show()
+```
+
+**Figure 1.** Average signal of all channels during the example event (divided into epochs). Only the epoch marked
+blue is analyzed further.
+
+### Features: power spectral density within frequency bands {.unlisted .unnumbered}
+
+The power spectral density (PSD) was estimated within each epoch. Welch's method was used, with the length
+of each segment (`nperseg`) of `r nperseg`. The frequency range from `r min_freq` Hz to `r max_freq` Hz was
+divided into `r freq_step` Hz width bands (e.g., `r min_freq`-`r min_freq + freq_step` Hz,
+`r min_freq + freq_step`-`r min_freq + freq_step * 2` Hz, and so on), and the area under the PSD curve
+was calculated for each frequency band using the Simpson's rule.
+
+```{python}
+# Select a random channel
+np.random.seed(42)
+channel = data.ch_names[np.random.randint(0, len(data.ch_names), 1)[0]]
+
+# Get the event of interest
+event = example_normalized_event[example_normalized_event['EventID'] == target_event].iloc[0]
+
+# Get event data
+event_data = data.copy().crop(tmin = event['Start'], tmax = event['End']).get_data(picks = [channel])[0]
+
+# Define the frequency ranges
+freq_ranges = np.arange(min_freq, max_freq, freq_step)
+
+# Calculate the PSD
+sfreq = data.info['sfreq']
+freqs, psd = welch(event_data, sfreq, nperseg = nperseg)
+```
+
+```{python, include = TRUE}
+colors = ['blue', 'red']
+
+plt.plot(freqs, psd, linewidth = 0.75, color = 'black');
+
+for i, low in enumerate(freq_ranges):
+    color = colors[i % 2]
+    high = low + freq_step
+    idx_band = np.logical_and(freqs >= low, freqs <= high)
+    plt.fill_between(freqs, psd, where = idx_band, color = color, alpha = 0.1);
+
+plt.xlim(min_freq, max_freq);
+plt.ylim(0, np.max(psd) + np.max(psd) * 0.05);
+plt.title(f'Power spectral density in channel {channel}');
+plt.show();
+```
+
+**Figure 2.** Power spectral density within frequency bands. Interchanging blue and orange colors mark
+different features.
+
+### Extracted features
+
+```{python, include = TRUE}
+plt.hist(np.log(feature_matrix.values).flatten(), bins = 250, density = True);
+plt.xlabel('Absolute band power, log');
+plt.ylabel('Density');
+plt.title('Absolute band power distribution');
+plt.show();
+```
+
+**Figure 3.** Distribution of the extracted features.
+
+```{python}
+x = np.log(feature_matrix.values)
+
+x = x.T - np.mean(x, axis = 1)
+x = x.T
+
+cv = np.sqrt(np.power(np.e, np.power(np.std(x, axis = 1), 2)) - 1)
+```
+
+```{python, include = TRUE}
+plt.hist(cv, bins = 50);
+plt.xlabel('Coefficient of variation (CV)');
+plt.ylabel('Frequency');
+plt.title('Distribution of coefficient of variation');
+plt.show();
+```
+
+```{python, include = TRUE}
+pca = PCA(n_components = 3).fit_transform(x.T)
+
+plt.scatter(pca[:, 0], pca[:, 1],
+            c = LabelEncoder().fit_transform(key['Event']),
+            s = 10,
+            alpha = 0.1)
+plt.title('Event PCA')
+plt.show()
+```
+
+
+
+```{python, include = TRUE}
+pca = PCA(n_components = 2).fit_transform(x)
+
+plt.scatter(pca[:, 0], pca[:, 1],
+            c = LabelEncoder().fit_transform(feature_info['Frequency']),
+            s = 10,
+            alpha = 0.1)
+plt.title('Feature PCA')
+plt.show()
+```

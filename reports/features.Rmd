@@ -1,0 +1,73 @@
+---
+date: <small>`r Sys.Date()`</small>
+author: <small>Ieva Kerseviciute</small>
+title: Problem at Hand
+---
+
+```{r r-setup, include = FALSE}
+# snakemake <- readRDS('.features.Rmd.RDS')
+snakemake@source('R/rmd_setup.R')
+library(foreach)
+library(glue)
+library(data.table)
+library(dplyr)
+
+config <- snakemake@config
+scriptdir <- snakemake@scriptdir
+
+feature_length <- config$features$length
+min_freq <- config$features$min_freq
+max_freq <- config$features$max_freq
+freq_step <- config$features$freq_step
+nperseg <- config$features$nperseg
+relative <- config$features$relative
+
+samples <- data.table::fread(snakemake@input$samples) %>%
+  .[ SampleID == snakemake@wildcards$sample ] %>%
+  .[ , list(SampleID, Run, Age, Sex, DominantHand) ]
+
+prefix <- snakemake@input$feature_matrix %>% dirname() %>% dirname()
+```
+
+```{python python-setup}
+import matplotlib.pyplot as plt
+import pandas as pd
+import numpy as np
+import re
+from scipy.signal import welch
+from scipy.integrate import simps
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import LabelEncoder
+
+with open(f'{r.scriptdir}/python/methods.py', 'r') as file:
+    exec(file.read())
+```
+
+# Extracting features in sample _`r snakemake@wildcards$sample`_ {.tabset .tabset-pills}
+
+```{r}
+pages <- foreach::foreach(run = samples[ , Run ] %>% unique) %do% {
+  knitr::knit_child(glue::glue('{snakemake@scriptdir}/reports/components/features.Rmd'), quiet = TRUE, envir = environment())
+}
+```
+
+```{r, include = TRUE, results = 'asis'}
+cat(unlist(pages), sep = '\n')
+```
+
+# {.unlisted .unnumbered}
+
+## Summary
+
+**Table 3.** Number of events in all runs.
+
+```{r, include = TRUE}
+# feature_key[ , table(Run) ] %>%
+#   data.table::as.data.table() %>%
+#   .[ , RunId := gsub(x = Run, pattern = 'run', replacement = '') %>% as.numeric() ] %>%
+#   .[ order(RunId) ] %>%
+#   data.table::setnames('N', 'Number of events') %>%
+#   .[ , Run := paste('Run', RunId) ] %>%
+#   .[ , list(Run, `Number of events`) ] %>%
+#   showTable()
+```

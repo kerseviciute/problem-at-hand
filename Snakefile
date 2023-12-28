@@ -146,6 +146,22 @@ rule report_preprocessing:
     report = '{project}/preprocess_{sample}.html'
   params:
     script = 'reports/preprocess.Rmd'
-  threads: 4 # avoid running reports in parallel
+  threads: 1
+  conda: 'env/r.yml'
+  script: 'R/render.R'
+
+rule report_features:
+  input:
+    samples = config['sampleSheet'],
+    events = all_runs_events,
+    good_channels = all_runs_good_channels,
+    feature_matrix = all_runs_feature_matrix,
+    feature_key = all_runs_feature_key,
+    event_key = all_runs_event_key
+  output:
+    report = '{project}/features_{sample}.html'
+  params:
+    script = 'reports/features.Rmd'
+  threads: 1
   conda: 'env/r.yml'
   script: 'R/render.R'
