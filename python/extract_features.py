@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 from multiprocessing import Pool
 from functools import partial
+import re
 
 
 def bandpower(data, sf, low, high, min_freq, max_freq, nperseg = None, relative = False):
@@ -26,7 +27,7 @@ def bandpower(data, sf, low, high, min_freq, max_freq, nperseg = None, relative 
     return bp
 
 
-def process_event(events, data, freq_range, freq_step, min_freq, max_freq, relative_frequency, nperseg, index):
+def process_event(events, data, freq_range, freq_step, min_freq, max_freq, relative_frequency, nperseg, run, index):
     print(f'Processing event {index}')
 
     features = []
@@ -57,13 +58,23 @@ def process_event(events, data, freq_range, freq_step, min_freq, max_freq, relat
                 'Type': feature_type,
                 'Feature': bp,
                 'Event': event['Event'],
-                'EventID': event['EventID'],
                 'Start': event['Start'],
                 'End': event['End'],
-                'OriginalEventID': event['OriginalEventID']
+                'OriginalEventID': event['OriginalEventID'],
+                'FeatureID': f'{channel}_{freq}',
+                'Run': run,
+                'EventID': f'{event["EventID"]}_{run}'
             })
 
     return pd.DataFrame(features)
+
+
+def extract_feature_channel(row):
+    return re.sub('X([0-9]+)_[0-9]+', '\\1', row['FeatureID'])
+
+
+def extract_feature_frequency(row):
+    return re.sub('X[0-9]+_([0-9]+)', '\\1', row['FeatureID'])
 
 
 if __name__ == '__main__':
@@ -103,7 +114,9 @@ if __name__ == '__main__':
     # Process the events parallely to preserve my very limited patience
     threads = snakemake.threads
     with Pool(threads) as pool:
-        features = pool.map(partial(process_event, events, data, freq_range, freq_step, min_freq, max_freq, relative_frequency, nperseg),
+        features = pool.map(partial(process_event,
+                                    events, data, freq_range, freq_step, min_freq, max_freq,
+                                    relative_frequency, nperseg, snakemake.wildcards['run']),
                             range(len(events)))
 
     features = pd.concat(features)
@@ -132,4 +145,23 @@ if __name__ == '__main__':
 
     print('Validation successful!')
 
-    features.to_csv(snakemake.output['features'], index = False)
+    # Extract feature matrix
+    x = pd.pivot_table(features, values = 'Feature', index = 'FeatureID', columns = 'EventID')
+    x = x.apply(pd.to_numeric)
+
+    # Extract event details
+    event_info = features[['EventID', 'Run', 'Event', 'OriginalEventID', 'Start', 'End']]
+    event_info = event_info.drop_duplicates().reset_index(drop = True)
+
+    # Extract feature details
+    feature_info = features[['FeatureID', 'Channel', 'Frequency']]
+    feature_info = feature_info.drop_duplicates().reset_index(drop = True)
+    feature_info['Frequency'] = feature_info['Frequency'].astype('int', copy = False)
+
+    # Make sure everything matches
+    assert len(event_info) == x.shape[1]
+    assert len(feature_info) == x.shape[0]
+
+    x.to_csv(snakemake.output['feature_matrix'])
+    event_info.to_csv(snakemake.output['event_key'], index = False)
+    feature_info.to_csv(snakemake.output['feature_key'], index = False)

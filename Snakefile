@@ -20,7 +20,7 @@ rule download:
 
 rule download_montage:
   output:
-    mat = 'montage/montage_left_hemisphere.mat'
+    mat = temp('montage/montage_left_hemisphere.mat')
   params:
     url = 'https://osf.io/download/uw7hr'
   shell:
@@ -50,7 +50,7 @@ rule filter:
   input:
     raw = 'output/{project}/{sample}/{run}/mne_raw.pkl'
   output:
-    filtered = 'output/{project}/{sample}/{run}/mne_filtered.pkl'
+    filtered = temp('output/{project}/{sample}/{run}/mne_filtered.pkl')
   conda: 'env/mne.yml'
   script: 'python/filter.py'
 
@@ -70,7 +70,9 @@ rule extract_features:
     final = 'output/{project}/{sample}/{run}/mne_good_channels.pkl',
     events = 'output/{project}/{sample}/{run}/events.pkl'
   output:
-    features = 'output/{project}/{sample}/{run}/features.csv'
+    feature_matrix = 'output/{project}/{sample}/{run}/feature_matrix.csv',
+    feature_key = 'output/{project}/{sample}/{run}/feature_key.csv',
+    event_key = 'output/{project}/{sample}/{run}/event_key.csv',
   params:
     feature_length = config['features']['length'],
     min_freq = config['features']['min_freq'],
@@ -93,9 +95,9 @@ def all_runs_raw_mne(wildcards):
   return [f'output/{{project}}/{{sample}}/{run}/mne_raw.pkl' for run in runs]
 
 
-def all_runs_filtered_mne(wildcards):
+def all_runs_good_channels(wildcards):
   runs = samples[samples['SampleID'] == wildcards.sample]['Run']
-  return [f'output/{{project}}/{{sample}}/{run}/mne_filtered.pkl' for run in runs]
+  return [f'output/{{project}}/{{sample}}/{run}/mne_good_channels.pkl' for run in runs]
 
 
 def all_runs_bad_channels(wildcards):
@@ -103,15 +105,24 @@ def all_runs_bad_channels(wildcards):
   return [f'output/{{project}}/{{sample}}/{run}/bad_channels.pkl' for run in runs]
 
 
-rule combine_features:
-  input:
-    features = all_runs_features
-  output:
-    feature_matrix = 'output/{project}/{sample}/all/feature_matrix.csv',
-    feature_key = 'output/{project}/{sample}/all/key.csv'
-  conda: 'env/mne.yml'
-  script: 'python/combine_features.py'
+def all_runs_events(wildcards):
+  runs = samples[samples['SampleID'] == wildcards.sample]['Run']
+  return [f'output/{{project}}/{{sample}}/{run}/events.pkl' for run in runs]
 
+
+def all_runs_feature_matrix(wildcards):
+  runs = samples[samples['SampleID'] == wildcards.sample]['Run']
+  return [f'output/{{project}}/{{sample}}/{run}/feature_matrix.csv' for run in runs]
+
+
+def all_runs_feature_key(wildcards):
+  runs = samples[samples['SampleID'] == wildcards.sample]['Run']
+  return [f'output/{{project}}/{{sample}}/{run}/feature_key.csv' for run in runs]
+
+
+def all_runs_event_key(wildcards):
+  runs = samples[samples['SampleID'] == wildcards.sample]['Run']
+  return [f'output/{{project}}/{{sample}}/{run}/event_key.csv' for run in runs]
 
 ###################################################################################################
 # REPORTS
@@ -129,7 +140,7 @@ rule report_preprocessing:
   input:
     samples = config['sampleSheet'],
     raw = all_runs_raw_mne,
-    filtered = all_runs_filtered_mne,
+    filtered = all_runs_good_channels,
     bad_channels = all_runs_bad_channels
   output:
     report = '{project}/preprocess_{sample}.html'
