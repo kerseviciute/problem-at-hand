@@ -1,4 +1,4 @@
-name: mne
+name: problem-at-hand-mne
 channels:
   - conda-forge
   - bioconda

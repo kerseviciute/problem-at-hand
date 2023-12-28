@@ -14,3 +14,7 @@ features:
   max_freq: 100
   freq_step: 5
   relative: False
+
+report:
+  pages:
+    - index

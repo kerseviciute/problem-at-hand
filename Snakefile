@@ -6,7 +6,7 @@ samples = pd.read_csv(config['sampleSheet'])
 
 rule all:
   input:
-    expand('output/problem-at-hand/S5/run{run}/features.csv', run = range(1,11))
+    expand('{project}/{page}.html', project = config['project'], page = config['report']['pages'])
 
 rule download:
   output:
@@ -95,3 +95,16 @@ rule combine_features:
     feature_key = 'output/{project}/{sample}/all/key.csv'
   conda: 'env/mne.yml'
   script: 'python/combine_features.py'
+
+
+###################################################################################################
+# REPORTS
+###################################################################################################
+
+rule report_summary:
+  output:
+    report = '{project}/index.html'
+  params:
+    script = 'reports/index.Rmd'
+  conda: 'env/r.yml'
+  script: 'R/render.R'

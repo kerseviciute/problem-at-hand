@@ -1,0 +1,35 @@
+name: problem-at-hand
+navbar:
+  title: Problem at Hand
+  left:
+    - text: Home
+      icon: fa-home
+      href: index.html
+    - text: Preprocessing
+      menu:
+        - text: Sample 2
+          href: preprocess_S2.html
+        - text: Sample 3
+          href: preprocess_S3.html
+        - text: Sample 4
+          href: preprocess_S4.html
+        - text: Sample 5
+          href: preprocess_S5.html
+    - text: Features
+      menu:
+        - text: Sample 2
+          href: features_S2.html
+        - text: Sample 3
+          href: features_S3.html
+        - text: Sample 4
+          href: features_S4.html
+        - text: Sample 5
+          href: features_S5.html
+output:
+  html_document:
+    self_contained: true
+    toc: true
+    toc_depth: 3
+    toc_float:
+      collapsed: false
+      smooth_scroll: true

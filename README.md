@@ -1,21 +1,31 @@
-# Adaptive neurotechnologies
+# Problem at Hand
 
 ## How to run this analysis
 
-1. Install conda (and mamba) and create the _snakemake_ conda environment. Activate the environment.
+1. Install conda and mamba. Create the _snakemake_ (`env/snakemake.yml`) conda environment
+(required to run the analysis) and the _problem-at-hand-mne_ (`env/mne.yml`) conda environment
+(required to generate the reports).
 
 ```shell
 mamba env create -f env/snakemake.yml
+mamba env create -f env/mne.yml
+```
+
+2. Activate the snakemake environment.
+
+```shell
 conda activate snakemake
 ```
 
-2. Run ``snakemake``:
+3. Run ``snakemake``:
 
 ```shell
-snakemake --cores 1 --conda-frontend mamba --use-conda
+snakemake --conda-frontend mamba --use-conda --cores 1 -p all
 ```
 
-## Sample sheet information
+## Information about the data
+
+### Sample sheet information
 
 - **SID**: File identifier, used to locate the data files.
 - **SampleID**: Sample identifier, used to determine the person.
@@ -24,7 +34,7 @@ snakemake --cores 1 --conda-frontend mamba --use-conda
 - **Sex**: Sex of the person.
 - **DominantHand**: Dominant hand of the person.
 
-## Data aquisition
+### Data acquisition
 
 - **Product**: g.Pangolin (g.tec medical engineering GmbH, Austria)
 - **Number of channels**: 256 channels
