@@ -42,7 +42,7 @@ snakemake --conda-frontend mamba --use-conda --cores 1 -p all
 
 ## To Do
 
-- [ ] Data filtering reports
+- [x] Data filtering reports
 - [ ] Feature extraction reports
 - [ ] Finalize the classifier analysis
 - [ ] Fit models for all samples
@@ -52,3 +52,4 @@ snakemake --conda-frontend mamba --use-conda --cores 1 -p all
   - [ ] Feature extraction
   - [ ] Model results
   - [ ] Topographic maps
+- [ ] Try to deny the results.

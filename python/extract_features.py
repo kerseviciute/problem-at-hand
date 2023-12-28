@@ -12,7 +12,7 @@ def bandpower(data, sf, low, high, min_freq, max_freq, nperseg = None, relative 
     import numpy as np
 
     if nperseg is None:
-        nperseg = sf
+        nperseg = np.min([sf, len(data) - 1])
 
     freqs, psd = welch(data, sf, nperseg = nperseg)
     freq_res = freqs[1] - freqs[0]
@@ -26,13 +26,15 @@ def bandpower(data, sf, low, high, min_freq, max_freq, nperseg = None, relative 
     return bp
 
 
-def process_event(events, data, freq_range, freq_step, min_freq, max_freq, relative_frequency, index):
+def process_event(events, data, freq_range, freq_step, min_freq, max_freq, relative_frequency, nperseg, index):
     print(f'Processing event {index}')
 
     features = []
     event = events.iloc[index]
 
     event_data = data.copy().crop(tmin = event['Start'], tmax = event['End'])
+
+    feature_type = 'Relative Band Power' if relative_frequency else 'Absolute Band Power'
 
     # Loop though the channels
     for channel in event_data.ch_names:
@@ -45,17 +47,20 @@ def process_event(events, data, freq_range, freq_step, min_freq, max_freq, relat
                 high = freq + freq_step,
                 min_freq = min_freq,
                 max_freq = max_freq,
-                nperseg = 300,
+                nperseg = nperseg,
                 relative = relative_frequency
             )
 
             features.append({
                 'Channel': channel,
                 'Frequency': freq,
-                'Type': 'Relative Band Power',
+                'Type': feature_type,
                 'Feature': bp,
                 'Event': event['Event'],
-                'EventID': event['EventID']
+                'EventID': event['EventID'],
+                'Start': event['Start'],
+                'End': event['End'],
+                'OriginalEventID': event['OriginalEventID']
             })
 
     return pd.DataFrame(features)
@@ -80,6 +85,7 @@ if __name__ == '__main__':
     max_freq = snakemake.params['max_freq']
     freq_step = snakemake.params['freq_step']
     relative_frequency = snakemake.params['relative_frequency']
+    nperseg = snakemake.params['nperseg']
 
     # Read input data
     data = read_file(snakemake.input['final'])
@@ -92,12 +98,38 @@ if __name__ == '__main__':
     # Define the frequency range
     freq_range = np.arange(min_freq, max_freq, freq_step)
 
+    print(f'Processing {len(events)} events')
+
     # Process the events parallely to preserve my very limited patience
     threads = snakemake.threads
     with Pool(threads) as pool:
-        features = pool.map(partial(process_event, events, data, freq_range, freq_step, min_freq, max_freq, relative_frequency),
+        features = pool.map(partial(process_event, events, data, freq_range, freq_step, min_freq, max_freq, relative_frequency, nperseg),
                             range(len(events)))
 
     features = pd.concat(features)
+    features = features.sort_values('Start')
+
+    #######################
+    # Validate that everything is okay
+    #######################
+    print('Validating the events')
+
+    events = read_file(snakemake.input['events'])
+    key = features[['Event', 'Start', 'End', 'OriginalEventID']].drop_duplicates()
+    key = key.reset_index(drop = True)
+
+    # Validate
+    for index, feature_event in key.iterrows():
+        eventId = feature_event['OriginalEventID']
+        event = events[events['EventID'] == eventId].iloc[0]
+
+        assert feature_event['Start'] >= event['Start'], \
+            f'Start position not matching in event {eventId}: {feature_event["Start"]} < {event["Start"]}'
+        assert feature_event['End'] <= event['End'], \
+            f'End position not matching in event {eventId}: {feature_event["End"]} > {event["End"]}'
+        assert feature_event['Event'] == event['Event'], \
+            f'Event type not matching in event {eventId}: {feature_event["Event"]} != {event["Event"]}'
+
+    print('Validation successful!')
 
     features.to_csv(snakemake.output['features'], index = False)

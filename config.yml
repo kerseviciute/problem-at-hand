@@ -8,13 +8,17 @@ filter:
   scale: True
   # In case you wish to remove them in the future, it would be useful to
   # evaluate, which channels are bad between different runs and set a cutoff.
+  # Actually, maybe it is smarter to filter out these channels from the
+  # extracted features, as different channels (and thus features coming from
+  # different channels too) are not dependent on each other
   dropLowQuality: False
 
 features:
-  length: 0.5
-  min_freq: 5
+  length: 0.25
+  min_freq: 4
   max_freq: 100
-  freq_step: 5
+  freq_step: 4
+  nperseg: 150
   relative: False
 
 report:

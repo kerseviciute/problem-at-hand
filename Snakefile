@@ -76,6 +76,7 @@ rule extract_features:
     min_freq = config['features']['min_freq'],
     max_freq = config['features']['max_freq'],
     freq_step = config['features']['freq_step'],
+    nperseg = config['features']['nperseg'],
     relative_frequency = config['features']['relative']
   threads: 10
   conda: 'env/mne.yml'

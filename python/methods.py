@@ -33,7 +33,8 @@ def normalize_events(events, feature_length):
                 'Start': start,
                 'End': end,
                 'Event': centered_event['Event'],
-                'Length': feature_length
+                'Length': feature_length,
+                'OriginalEventID': event['EventID']
             })
 
     mini_events = pd.DataFrame(mini_events)
