@@ -25,6 +25,10 @@ snakemake --conda-frontend mamba --use-conda --cores 1 -p all
 
 ## Information about the data
 
+The original dataset (available [here](https://osf.io/4dwjt/?view_only=d23acfd50655427fbaae381a17cbfbcc))
+had data for 5 persons, one of which was left-handed. In this analysis, only the data from
+4 subjects, all right-handed, were used.
+
 ### Sample sheet information
 
 - **SID**: File identifier, used to locate the data files.
