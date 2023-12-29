@@ -4,7 +4,7 @@
 prefix = f'{r.prefix}/{r.run}'
 
 raw = read_pickle(f'{prefix}/mne_raw.pkl')
-filtered = read_pickle(f'{prefix}/mne_filtered.pkl')
+filtered = read_pickle(f'{prefix}/mne_good_channels.pkl')
 bad_channels = read_pickle(f'{prefix}/bad_channels.pkl')
 ```
 
