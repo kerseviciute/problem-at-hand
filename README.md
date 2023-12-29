@@ -47,7 +47,7 @@ had data for 5 persons, one of which was left-handed. In this analysis, only the
 ## To Do
 
 - [x] Data filtering reports
-- [ ] Feature extraction reports
+- [x] Feature extraction reports
 - [ ] Finalize the classifier analysis
 - [ ] Fit models for all samples
 - [ ] Which frequencies are the best for finger classification? -> create topographic maps using these frequencies?

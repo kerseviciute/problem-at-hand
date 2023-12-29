@@ -11,6 +11,9 @@ library(foreach)
 library(glue)
 library(data.table)
 library(dplyr)
+library(ggplot2)
+library(ggpubr)
+library(ggrepel)
 
 config <- snakemake@config
 scriptdir <- snakemake@scriptdir
@@ -26,7 +29,7 @@ samples <- data.table::fread(snakemake@input$samples) %>%
   .[ SampleID == snakemake@wildcards$sample ] %>%
   .[ , list(SampleID, Run, Age, Sex, DominantHand) ]
 
-prefix <- snakemake@input$feature_matrix %>% dirname() %>% dirname()
+prefix <- snakemake@params$prefix
 ```
 
 ```{python python-setup}
@@ -36,14 +39,217 @@ import numpy as np
 import re
 from scipy.signal import welch
 from scipy.integrate import simps
-from sklearn.decomposition import PCA
-from sklearn.preprocessing import LabelEncoder
 
 with open(f'{r.scriptdir}/python/methods.py', 'r') as file:
     exec(file.read())
 ```
 
-# Extracting features in sample _`r snakemake@wildcards$sample`_ {.tabset .tabset-pills}
+# Extracting features in sample _`r snakemake@wildcards$sample`_
+
+## Summary
+
+Firstly, the events were cropped into epochs of equal length of `r feature_length` seconds. If it was impossible
+to divide an event into equal time segments, the event was cropped from both start and end (e.g., an event of
+`r round(feature_length * 12 + feature_length / 2, 2)` seconds would be shortened by
+`r round(feature_length / 4, 2)` seconds from both start and end in order to make it `r round(feature_length * 12, 2)`
+seconds long, a time interval which is divided into exactly 12 segments of `r feature_length` seconds).
+
+The power spectral density (PSD) was estimated within each epoch. Welch's method was used, with the length
+of each segment (`nperseg`) of `r nperseg`. The frequency range from `r min_freq` Hz to `r max_freq` Hz was
+divided into `r freq_step` Hz width bands (e.g., `r min_freq`-`r min_freq + freq_step` Hz,
+`r min_freq + freq_step`-`r min_freq + freq_step * 2` Hz, and so on), and the area under the PSD curve
+was calculated for each frequency band using the Simpson's rule.
+
+The extracted features from all events were joined into a single dataset.
+The power line frequencies (50-70 Hz) were removed from extracted feature data. For the remainder of the
+features, coefficient of correlation was calculated. For the data that is log-normally distributed an estimate
+of coefficient of variation is defined as:
+
+$$\hat{cv} = \sqrt{e^{s^{2}_{ln}} - 1}$$
+
+where $s_{ln}$ is the standard deviation of the data after the natural log transformation.
+
+Principal component analysis was performed to search for both event and feature clustering.
+
+```{r}
+feature_key <- foreach(file = snakemake@input$feature_key, .combine = rbind) %do% {
+  fread(file)
+} %>% unique()
+
+feature_key <- feature_key[ Frequency < 50 - freq_step + 1 | Frequency > 70 ]
+
+feature_matrix <- foreach(file = snakemake@input$feature_matrix, .combine = merge) %do% {
+  fread(file)
+}
+
+feature_matrix <- feature_matrix[ FeatureID %in% feature_key[ , FeatureID ] ]
+feature_matrix_rownames <- feature_matrix[ , FeatureID ]
+
+event_key <- foreach(file = snakemake@input$event_key, .combine = rbind) %do% {
+  fread(file)
+}
+
+stopifnot(all(feature_matrix[ , FeatureID ] %in% feature_key[ , FeatureID ]))
+stopifnot(all(colnames(feature_matrix)[ -1 ] %in% event_key[ , EventID ]))
+stopifnot(nrow(feature_matrix) == nrow(feature_key))
+stopifnot(ncol(feature_matrix) - 1 == nrow(event_key))
+```
+
+**Table 1.** Number of events in all runs.
+
+```{r, include = TRUE}
+event_key[ , table(Run) ] %>%
+        data.table::as.data.table() %>%
+        .[ , RunId := gsub(x = Run, pattern = 'run', replacement = '') %>% as.numeric() ] %>%
+        .[ order(RunId) ] %>%
+        data.table::setnames('N', 'Number of events') %>%
+        .[ , Run := paste('Run', RunId) ] %>%
+        .[ , list(Run, `Number of events`) ] %>%
+        showTable()
+```
+
+```{r}
+x <- feature_matrix[ , -1 ] %>%
+        setDF(rownames = feature_matrix_rownames) %>%
+        as.matrix() %>%
+        log()
+
+p1 <- data.table(Bandpower = as.numeric(x)) %>%
+        ggplot() +
+        geom_histogram(
+                aes(x = Bandpower, y = after_stat(density)),
+                fill = 'white',
+                color = 'black',
+                binwidth = 0.25,
+                linewidth = 0.25
+        ) +
+        xlab('Absolute band power, log') +
+        ylab('Density') +
+        theme_bw(base_size = 9) +
+        theme(panel.grid = element_blank())
+
+x <- x %>%
+        t() %>%
+        scale(center = TRUE, scale = FALSE) %>%
+        t()
+
+p2 <- x %>%
+        apply(1, \(x) { sd(x)^2 %>% exp() %>% -1 %>% sqrt() }) %>%
+        data.table(CV = .) %>%
+        ggplot() +
+        geom_histogram(
+                aes(x = CV, y = after_stat(density)),
+                fill = 'white',
+                color = 'black',
+                binwidth = 0.025,
+                linewidth = 0.25
+        ) +
+        ylab('Density') +
+        xlab('Coefficient of variation (CV)') +
+        theme_bw(base_size = 9) +
+        expand_limits(x = 1) +
+        theme(panel.grid = element_blank())
+
+# May take some time
+event_pca <- prcomp(t(x), rank. = 2)$x %>%
+        as.data.table(keep.rownames = 'EventID') %>%
+        merge(event_key) %>%
+        .[ , EventType := make.names(Event) %>% factor() %>% relevel(ref = 'X0') ] %>%
+        .[ ]
+
+# May take some time
+feature_pca <- prcomp(x, rank. = 2)$x %>%
+        as.data.table(keep.rownames = 'FeatureID') %>%
+        merge(feature_key) %>%
+        .[ , Frequency := factor(Frequency) ] %>%
+        .[ ]
+
+feature_annotation <- feature_pca[ , list(PC1 = median(PC1), PC2 = median(PC2)), by = Frequency ]
+
+p3 <- event_pca %>%
+        ggplot() +
+        geom_point(aes(x = PC1, y = PC2, color = EventType, fill = EventType), size = 1, alpha = 0.5) +
+        theme_bw(base_size = 9) +
+        theme(panel.grid = element_blank()) +
+        xlab('1st principal component') +
+        ylab('2nd principal component') +
+        theme(legend.position = 'top') +
+        scale_color_discrete(name = 'Event') +
+        scale_fill_discrete(name = 'Event')
+
+p4 <- event_pca %>%
+        .[ , Run := gsub(x = Run, pattern = 'run', replacement = 'Run ') ] %>%
+        ggplot() +
+        geom_point(aes(x = PC1, y = PC2, color = Run, fill = Run), size = 1, alpha = 0.5) +
+        theme_bw(base_size = 9) +
+        theme(panel.grid = element_blank()) +
+        xlab('1st principal component') +
+        ylab('2nd principal component') +
+        theme(legend.position = 'top')
+
+p5 <- feature_pca %>%
+        ggplot(aes(x = PC1, y = PC2)) +
+        geom_point(aes(fill = Frequency, color = Frequency), size = 1, alpha = 0.75) +
+        theme_bw(base_size = 9) +
+        theme(panel.grid = element_blank()) +
+        xlab('1st principal component') +
+        ylab('2nd principal component') +
+        theme(legend.position = 'none') +
+        geom_label_repel(
+                data = feature_annotation,
+                aes(x = PC1, y = PC2, label = Frequency),
+                min.segment.length = 0,
+                inherit.aes = FALSE,
+                size = 2.5
+        )
+
+```
+
+```{r, include = TRUE, fig.height = 3.6}
+ggarrange(
+        p1, p2,
+        nrow = 1,
+        ncol = 2,
+        labels = letters[ 1:2 ],
+        font.label = list(size = 11)
+)
+```
+```{r, include = TRUE, fig.height = 3.6}
+ggarrange(
+  p3,
+  nrow = 1,
+  ncol = 1,
+  labels = letters[ 3 ],
+  font.label = list(size = 11)
+)
+```
+```{r, include = TRUE, fig.height = 3.6}
+ggarrange(
+  p4,
+  nrow = 1,
+  ncol = 1,
+  labels = letters[ 4 ],
+  font.label = list(size = 11)
+)
+```
+```{r, include = TRUE, fig.height = 3.6}
+ggarrange(
+        p5,
+        nrow = 1,
+        ncol = 1,
+        labels = letters[ 5 ],
+        font.label = list(size = 11)
+)
+```
+
+**Figure 1.**
+**(a)** The distribution of log-transformed feature data.
+**(b)** The distribution of coefficient of variation of log-transformed centered feature data.
+**(c)** The first two principal components of event PCA. The colors represent different events.
+**(d)** The first two principal components of event PCA. The colors represent different runs.
+**(e)** The first two principal components of feature PCA. The colors and numbers represent different frequencies.
+
+## Individual runs {.tabset .tabset-pills}
 
 ```{r}
 pages <- foreach::foreach(run = samples[ , Run ] %>% unique) %do% {
@@ -53,21 +259,4 @@ pages <- foreach::foreach(run = samples[ , Run ] %>% unique) %do% {
 
 ```{r, include = TRUE, results = 'asis'}
 cat(unlist(pages), sep = '\n')
-```
-
-# {.unlisted .unnumbered}
-
-## Summary
-
-**Table 3.** Number of events in all runs.
-
-```{r, include = TRUE}
-# feature_key[ , table(Run) ] %>%
-#   data.table::as.data.table() %>%
-#   .[ , RunId := gsub(x = Run, pattern = 'run', replacement = '') %>% as.numeric() ] %>%
-#   .[ order(RunId) ] %>%
-#   data.table::setnames('N', 'Number of events') %>%
-#   .[ , Run := paste('Run', RunId) ] %>%
-#   .[ , list(Run, `Number of events`) ] %>%
-#   showTable()
 ```

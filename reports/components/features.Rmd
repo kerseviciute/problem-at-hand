@@ -1,6 +1,6 @@
-## Run `r gsub(x = run, pattern = 'run', replacement = '')`
+### Run `r gsub(x = run, pattern = 'run', replacement = '')`
 
-### Epochs {.unlisted .unnumbered}
+#### Epochs {.unlisted .unnumbered}
 
 ```{python}
 prefix = f'{r.prefix}/{r.run}'
@@ -31,13 +31,13 @@ to divide an event into equal time segments, the event was cropped from both sta
 `r round(feature_length / 4, 2)` seconds from both start and end in order to make it `r round(feature_length * 12, 2)`
 seconds long, a time interval which is divided into exactly 12 segments of `r feature_length` seconds).
 
-**Table 1.** Example event **before** splitting into epochs.
+**Table 2.** Example event **before** splitting into epochs.
 
 ```{r, include = TRUE}
 data.table::data.table(py$example_event) %>% showTable()
 ```
 
-**Table 2.** Example event **after** splitting into epochs.
+**Table 3.** Example event **after** splitting into epochs.
 
 ```{r, include = TRUE}
 data.table::data.table(py$example_normalized_event) %>% showTable()
@@ -66,10 +66,10 @@ plt.ylim(-limit, limit);
 plt.show()
 ```
 
-**Figure 1.** Average signal of all channels during the example event (divided into epochs). Only the epoch marked
+**Figure 2.** Average signal of all channels during the example event (divided into epochs). Only the epoch marked
 blue is analyzed further.
 
-### Features: power spectral density within frequency bands {.unlisted .unnumbered}
+#### Features: power spectral density within frequency bands {.unlisted .unnumbered}
 
 The power spectral density (PSD) was estimated within each epoch. Welch's method was used, with the length
 of each segment (`nperseg`) of `r nperseg`. The frequency range from `r min_freq` Hz to `r max_freq` Hz was
@@ -113,58 +113,130 @@ plt.title(f'Power spectral density in channel {channel}');
 plt.show();
 ```
 
-**Figure 2.** Power spectral density within frequency bands. Interchanging blue and orange colors mark
+**Figure 3.** Power spectral density within frequency bands. Interchanging blue and orange colors mark
 different features.
 
-### Extracted features
+#### Extracted features {.unlisted .unnumbered}
 
-```{python, include = TRUE}
-plt.hist(np.log(feature_matrix.values).flatten(), bins = 250, density = True);
-plt.xlabel('Absolute band power, log');
-plt.ylabel('Density');
-plt.title('Absolute band power distribution');
-plt.show();
+```{r}
+feature_key <- fread(glue('{prefix}/{run}/feature_key.csv'))
+event_key <- fread(glue('{prefix}/{run}/event_key.csv'))
+feature_key <- feature_key[ Frequency < 50 - freq_step + 1 | Frequency > 70 ]
+
+feature_matrix <- fread(glue('{prefix}/{run}/feature_matrix.csv'))
+feature_matrix <- feature_matrix[ FeatureID %in% feature_key[ , FeatureID ] ]
+feature_matrix_rownames <- feature_matrix[ , FeatureID ]
+
+stopifnot(all(feature_matrix[ , FeatureID ] %in% feature_key[ , FeatureID ]))
+stopifnot(all(colnames(feature_matrix)[ -1 ] %in% event_key[ , EventID ]))
+stopifnot(nrow(feature_matrix) == nrow(feature_key))
+stopifnot(ncol(feature_matrix) - 1 == nrow(event_key))
+
+x <- feature_matrix[ , -1 ] %>%
+  setDF(rownames = feature_matrix_rownames) %>%
+  as.matrix() %>%
+  log()
+
+p1 <- data.table(Bandpower = as.numeric(x)) %>%
+  ggplot() +
+  geom_histogram(
+    aes(x = Bandpower, y = after_stat(density)),
+    fill = 'white',
+    color = 'black',
+    binwidth = 0.25,
+    linewidth = 0.25
+  ) +
+  xlab('Absolute band power, log') +
+  ylab('Density') +
+  theme_bw(base_size = 9) +
+  theme(panel.grid = element_blank())
+
+x <- x %>%
+  t() %>%
+  scale(center = TRUE, scale = FALSE) %>%
+  t()
+
+p2 <- x %>%
+  apply(1, \(x) { sd(x)^2 %>% exp() %>% -1 %>% sqrt() }) %>%
+  data.table(CV = .) %>%
+  ggplot() +
+  geom_histogram(
+    aes(x = CV, y = after_stat(density)),
+    fill = 'white',
+    color = 'black',
+    binwidth = 0.025,
+    linewidth = 0.25
+  ) +
+  ylab('Density') +
+  xlab('Coefficient of variation (CV)') +
+  theme_bw(base_size = 9) +
+  expand_limits(x = 1) +
+  theme(panel.grid = element_blank())
+
+event_pca <- prcomp(t(x), rank. = 2)$x %>%
+  as.data.table(keep.rownames = 'EventID') %>%
+  merge(event_key) %>%
+  .[ , EventType := make.names(Event) %>% factor() %>% relevel(ref = 'X0') ] %>%
+  .[ ]
+
+feature_pca <- prcomp(x, rank. = 2)$x %>%
+  as.data.table(keep.rownames = 'FeatureID') %>%
+  merge(feature_key) %>%
+  .[ , Frequency := factor(Frequency) ] %>%
+  .[ ]
+
+feature_annotation <- feature_pca[ , list(PC1 = median(PC1), PC2 = median(PC2)), by = Frequency ]
+
+p3 <- event_pca %>%
+  ggplot() +
+  geom_point(aes(x = PC1, y = PC2, color = EventType, fill = EventType), size = 1, alpha = 0.75) +
+  theme_bw(base_size = 9) +
+  theme(panel.grid = element_blank()) +
+  xlab('1st principal component') +
+  ylab('2nd principal component') +
+  theme(legend.position = 'top') +
+  scale_color_discrete(name = 'Event') +
+  scale_fill_discrete(name = 'Event')
+
+p4 <- feature_pca %>%
+  ggplot(aes(x = PC1, y = PC2)) +
+  geom_point(aes(fill = Frequency, color = Frequency), size = 1, alpha = 0.75) +
+  theme_bw(base_size = 9) +
+  theme(panel.grid = element_blank()) +
+  xlab('1st principal component') +
+  ylab('2nd principal component') +
+  theme(legend.position = 'none') +
+  geom_label_repel(
+    data = feature_annotation,
+    aes(x = PC1, y = PC2, label = Frequency),
+    min.segment.length = 0,
+    inherit.aes = FALSE,
+    size = 2.5
+  )
 ```
 
-**Figure 3.** Distribution of the extracted features.
+The power line frequencies (50-70 Hz) were removed from extracted feature data. For the remainder of the
+features, coefficient of correlation was calculated. For the data that is log-normally distributed an estimate
+of coefficient of variation is defined as:
 
-```{python}
-x = np.log(feature_matrix.values)
+$$\hat{cv} = \sqrt{e^{s^{2}_{ln}} - 1}$$
 
-x = x.T - np.mean(x, axis = 1)
-x = x.T
+where $s_{ln}$ is the standard deviation of the data after the natural log transformation.
 
-cv = np.sqrt(np.power(np.e, np.power(np.std(x, axis = 1), 2)) - 1)
+Principal component analysis was performed to search for both event and feature clustering.
+
+```{r, include = TRUE, fig.height = 7.2}
+ggarrange(
+  p1, p2, p3, p4,
+  nrow = 2,
+  ncol = 2,
+  labels = letters[ 1:4 ],
+  font.label = list(size = 11)
+)
 ```
 
-```{python, include = TRUE}
-plt.hist(cv, bins = 50);
-plt.xlabel('Coefficient of variation (CV)');
-plt.ylabel('Frequency');
-plt.title('Distribution of coefficient of variation');
-plt.show();
-```
-
-```{python, include = TRUE}
-pca = PCA(n_components = 3).fit_transform(x.T)
-
-plt.scatter(pca[:, 0], pca[:, 1],
-            c = LabelEncoder().fit_transform(key['Event']),
-            s = 10,
-            alpha = 0.1)
-plt.title('Event PCA')
-plt.show()
-```
-
-
-
-```{python, include = TRUE}
-pca = PCA(n_components = 2).fit_transform(x)
-
-plt.scatter(pca[:, 0], pca[:, 1],
-            c = LabelEncoder().fit_transform(feature_info['Frequency']),
-            s = 10,
-            alpha = 0.1)
-plt.title('Feature PCA')
-plt.show()
-```
+**Figure 4.**
+**(a)** The distribution of log-transformed feature data.
+**(b)** The distribution of coefficient of variation of log-transformed centered feature data.
+**(c)** The first two principal components of event PCA. The colors represent different events.
+**(d)** The first two principal components of feature PCA. The colors and numbers represent different frequencies.

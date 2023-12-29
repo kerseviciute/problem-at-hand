@@ -146,10 +146,11 @@ rule report_preprocessing:
     report = '{project}/preprocess_{sample}.html'
   params:
     script = 'reports/preprocess.Rmd'
-  threads: 1
+  threads: 4 # avoid running reports in parallel
   conda: 'env/r.yml'
   script: 'R/render.R'
 
+# This report may run for a while, be patient!
 rule report_features:
   input:
     samples = config['sampleSheet'],
@@ -161,7 +162,8 @@ rule report_features:
   output:
     report = '{project}/features_{sample}.html'
   params:
-    script = 'reports/features.Rmd'
-  threads: 1
+    script = 'reports/features.Rmd',
+    prefix = 'output/{project}/{sample}'
+  threads: 4 # avoid running reports in parallel
   conda: 'env/r.yml'
   script: 'R/render.R'

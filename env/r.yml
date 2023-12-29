@@ -15,3 +15,4 @@ dependencies:
   - r-knitr 1.45
   - r-dt 0.31
   - r-glue 1.6.2
+  - r-ggrepel 0.9.4
