@@ -20,7 +20,8 @@ print('Reading the feature files')
 # Read features of all the runs from the same person
 features = pd.DataFrame()
 for file in snakemake.input:
-    data = pd.read_csv(snakemake.input[0])
+    print(f'Reading file {file}')
+    data = pd.read_csv(file)
     features = pd.concat([features, data], ignore_index = True)
 
 # Make sure run ids were extracted correctly and we have 10 runs
