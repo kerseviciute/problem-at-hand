@@ -1,19 +1,9 @@
-import pickle
 import pandas as pd
 import re
 import numpy as np
 
-with open('.combine_features.py.pkl', 'wb') as file:
-    pickle.dump(snakemake, file)
-
-
-# with open('.combine_features.py.pkl', 'rb') as file:
-#     snakemake = pickle.load(file)
-
-def feature_id(row): return f'{row["Channel"]}_{row["Frequency"]}'
-
-def event_id(row): return f'{row["EventID"]}_{row["Run"]}'
-
+pd.to_pickle(snakemake, '.combine_features.py.pkl')
+# snakemake = pd.read_pickle('.combine_features.py.pkl')
 
 print('Reading the feature files')
 
