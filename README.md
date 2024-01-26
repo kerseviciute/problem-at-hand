@@ -20,7 +20,7 @@ conda activate snakemake
 3. Run ``snakemake``:
 
 ```shell
-snakemake --conda-frontend mamba --use-conda --cores 1 -p all
+snakemake --conda-frontend mamba --use-conda --rerun-triggers mtime --cores 6 -p all
 ```
 
 ## Information about the data
@@ -56,4 +56,4 @@ had data for 5 persons, one of which was left-handed. In this analysis, only the
   - [ ] Feature extraction
   - [ ] Model results
   - [ ] Topographic maps
-- [ ] Try to deny the results.
+- [x] Try to deny the results.

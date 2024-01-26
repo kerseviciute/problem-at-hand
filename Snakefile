@@ -85,6 +85,10 @@ rule extract_features:
   script: 'python/extract_features.py'
 
 
+###################################################################################################
+# Functions to get all sample data
+###################################################################################################
+
 def all_runs_features(wildcards):
   runs = samples[samples['SampleID'] == wildcards.sample]['Run']
   return [f'output/{{project}}/{{sample}}/{run}/features.csv' for run in runs]

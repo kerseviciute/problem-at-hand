@@ -14,21 +14,15 @@ filter:
   dropLowQuality: False
 
 features:
-  length: 0.25
+  length: 0.5
   min_freq: 4
   max_freq: 100
   freq_step: 4
-  nperseg: 150
+  nperseg: 300
   relative: False
 
 report:
   pages:
     - index
     - preprocess_S2
-    - preprocess_S3
-    - preprocess_S4
-    - preprocess_S5
     - features_S2
-    - features_S3
-    - features_S4
-    - features_S5
